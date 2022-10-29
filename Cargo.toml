@@ -1,0 +1,21 @@
+[package]
+name = "apple_music_rpc"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+discord-rich-presence = "^0.2"
+
+minreq = { version = "^2.6", features = ["https-native"] }
+url = "^2.3"
+
+serde_json = "^1.0"
+serde = {version = "^1.0", features = ["derive"]}
+
+osascript = "0.3.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
