@@ -12,7 +12,7 @@
     <img src="https://img.shields.io/badge/Rust-🦀-blue.svg">
     <br />
     <br />
-    <a href="https://github.com/EETagent/Send/issues">Report issues</a>
+    <a href="https://github.com/EETagent/Apple-Music-Discord-RPC/issues">Report issues</a>
   </p>
 </p>
 
