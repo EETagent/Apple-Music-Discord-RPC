@@ -1,3 +1,6 @@
+<h1 align="center"><br><img src="./.github/img/appIcon.png" width=175px></h1>
+
+
 <h3 align="center">🍎 Apple Music Discord RPC!</h3>
 <p align="center">
     Rust + JavaScript for Automation (JXA) Discord Rich Presence Client for the macOS Apple Music app (Catalina and later) and legacy iTunes.
