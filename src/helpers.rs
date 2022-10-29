@@ -1,4 +1,5 @@
 use osascript::JavaScript;
+use serde::Deserialize;
 
 use crate::types::{iTunesAppName, iTunesProps};
 
@@ -19,17 +20,23 @@ struct Params {
     name: String,
 }
 
-pub fn is_music_open(app_name: &iTunesAppName) -> bool {
-    let command = JavaScript::new(
-        "return Application(\"System Events\").processes[$params.name].exists();",
-    );
-
-    let res: bool = command
+fn run_apple_javascript<T: for<'d> Deserialize<'d>>(
+    app_name: &iTunesAppName,
+    command: JavaScript,
+) -> T {
+    let res: T = command
         .execute_with_params(Params {
             name: app_name.to_string(),
         })
         .unwrap();
     res
+}
+
+pub fn is_music_open(app_name: &iTunesAppName) -> bool {
+    let command =
+        JavaScript::new("return Application(\"System Events\").processes[$params.name].exists();");
+
+    run_apple_javascript(app_name, command)
 }
 
 pub fn get_music_props(app_name: &iTunesAppName) -> iTunesProps {
@@ -40,13 +47,7 @@ pub fn get_music_props(app_name: &iTunesAppName) -> iTunesProps {
 ",
     );
 
-    let res: iTunesProps = command
-        .execute_with_params(Params {
-            name: app_name.to_string(),
-        })
-        .unwrap();
-
-    res
+    run_apple_javascript(app_name, command)
 }
 
 pub fn get_music_player_position(app_name: &iTunesAppName) -> f64 {
@@ -57,13 +58,7 @@ pub fn get_music_player_position(app_name: &iTunesAppName) -> f64 {
 ",
     );
 
-    let res: f64 = command
-        .execute_with_params(Params {
-            name: app_name.to_string(),
-        })
-        .unwrap();
-
-    res
+    run_apple_javascript(app_name, command)
 }
 
 pub fn get_music_state(app_name: &iTunesAppName) -> String {
@@ -74,11 +69,5 @@ pub fn get_music_state(app_name: &iTunesAppName) -> String {
     ",
     );
 
-    let res: String = command
-    .execute_with_params(Params {
-        name: app_name.to_string(),
-    })
-    .unwrap();
-
-    res
+    run_apple_javascript(app_name, command)
 }
