@@ -31,16 +31,16 @@ fn search_album_artwork(cache: &mut Cache, props: &iTunesProps) -> Option<iTunes
         );
 
         if let Err(err) = url {
-            println!("Error: {}", err);
+            eprintln!("Error: {}", err);
             return None;
         }
 
-        #[derive(Deserialize)]
+        #[derive(Deserialize,)]
         struct ResponseInner {
             #[serde(rename = "artworkUrl100")]
-            artwork_url_100: String,
+            artwork_url_100: Option<String>,
             #[serde(rename = "collectionViewUrl")]
-            collection_view_url: String,
+            collection_view_url: Option<String>,
         }
 
         #[derive(Deserialize)]
@@ -51,7 +51,7 @@ fn search_album_artwork(cache: &mut Cache, props: &iTunesProps) -> Option<iTunes
         let resp = minreq::get(url.unwrap()).send();
 
         if let Err(err) = resp {
-            println!("Error: {}", err);
+            eprintln!("Error: {}", err);
             return None;
         }
 
@@ -62,8 +62,8 @@ fn search_album_artwork(cache: &mut Cache, props: &iTunesProps) -> Option<iTunes
         }
 
         let infos = iTunesInfos {
-            artwork: Some(resp.results[0].artwork_url_100.clone()),
-            url: Some(resp.results[0].collection_view_url.clone()),
+            artwork: resp.results[0].artwork_url_100.clone(),
+            url: resp.results[0].collection_view_url.clone(),
         };
 
         println!("{}: {:?}", query, infos);
@@ -160,12 +160,12 @@ fn main() {
 
                 let set_activity = client.set_activity(activity);
                 if let Err(err) = set_activity {
-                    println!("Error: {}", err);
+                    eprintln!("Error: {}", err);
                 }
             } else if state == "paused" || state == "stopped" {
                 let clear_activity = client.clear_activity();
                 if let Err(err) = clear_activity {
-                    println!("Error: {}", err);
+                    eprintln!("Error: {}", err);
                 }
             }
         }
