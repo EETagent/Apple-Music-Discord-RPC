@@ -18,6 +18,10 @@
 
 ![-----------------------------------------------------](.github/img/rainbow.png)
 
+## 🔔 Information
+
+<img width="370" alt="Discord screenshot" src="https://user-images.githubusercontent.com/20557318/198847474-f4c41be5-8090-4ebb-a48f-8796ae013065.png">
+
 ## 👏 Credits
 
 - https://github.com/NextFire/apple-music-discord-rpc
