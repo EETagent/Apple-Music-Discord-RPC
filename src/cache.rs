@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -7,16 +7,18 @@ use crate::types::iTunesInfos;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cache {
     pub version: i32,
-    pub cache_file: String,
+    pub cache_file: PathBuf,
     pub data: HashMap<String, iTunesInfos>,
 }
 
 
 impl Cache {
     pub fn new() -> Cache {
+        let cache_path = dirs::cache_dir().unwrap().join("music-rpc.cache");
+        println!("Cache path: {}", cache_path.to_str().unwrap());
         Cache {
             version: 3,
-            cache_file: "cache.json".to_string(),
+            cache_file: cache_path,
             data: HashMap::new(),
         }
     }

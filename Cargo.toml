@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 discord-rich-presence = "^0.2"
 
+dirs = "^4.0"
+
 minreq = { version = "^2.6", features = ["https-native"] }
 url = "^2.3"
 
