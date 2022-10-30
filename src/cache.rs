@@ -11,7 +11,6 @@ pub struct Cache {
     pub data: HashMap<String, iTunesInfos>,
 }
 
-
 impl Cache {
     pub fn new() -> Cache {
         let cache_path = dirs::cache_dir().unwrap().join("music-rpc.cache");
@@ -43,7 +42,6 @@ impl Cache {
             return;
         }
 
-  
         self.data = data.data;
     }
 

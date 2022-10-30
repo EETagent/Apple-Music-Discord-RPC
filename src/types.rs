@@ -4,7 +4,7 @@ use std::{fmt};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum iTunesAppName {
     Music,
     iTunes,

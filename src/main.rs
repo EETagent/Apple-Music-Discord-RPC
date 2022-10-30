@@ -14,7 +14,10 @@ use helpers::{
     get_macos_version, get_music_player_position, get_music_props, get_music_state, is_music_open,
 };
 
-fn search_album_artwork(cache: &mut Cache, props: &iTunesProps) -> Option<iTunesInfos> {
+fn search_album_artwork(
+    cache: &mut Cache,
+    props: &iTunesProps,
+) -> Result<Option<iTunesInfos>, Box<dyn std::error::Error>> {
     let query = format!("{} {}", props.artist, props.name);
 
     let infos = cache.get(query.clone());
@@ -28,14 +31,9 @@ fn search_album_artwork(cache: &mut Cache, props: &iTunesProps) -> Option<iTunes
                 ("limit", "1"),
                 ("term", &query),
             ],
-        );
+        )?;
 
-        if let Err(err) = url {
-            eprintln!("Error: {}", err);
-            return None;
-        }
-
-        #[derive(Deserialize,)]
+        #[derive(Deserialize)]
         struct ResponseInner {
             #[serde(rename = "artworkUrl100")]
             artwork_url_100: Option<String>,
@@ -48,17 +46,12 @@ fn search_album_artwork(cache: &mut Cache, props: &iTunesProps) -> Option<iTunes
             results: Vec<ResponseInner>,
         }
 
-        let resp = minreq::get(url.unwrap()).send();
+        let resp = minreq::get(url).send()?;
 
-        if let Err(err) = resp {
-            eprintln!("Error: {}", err);
-            return None;
-        }
-
-        let resp: ResponseOuter = serde_json::from_str(resp.unwrap().as_str().unwrap()).unwrap();
+        let resp: ResponseOuter = serde_json::from_str(resp.as_str()?)?;
 
         if resp.results.len() == 0 {
-            return None;
+            return Ok(None);
         }
 
         let infos = iTunesInfos {
@@ -70,10 +63,79 @@ fn search_album_artwork(cache: &mut Cache, props: &iTunesProps) -> Option<iTunes
 
         cache.set(query, infos.clone());
 
-        return Some(infos);
+        return Ok(Some(infos));
     }
 
-    return Some(infos.unwrap().to_owned());
+    return Ok(Some(infos.unwrap().to_owned()));
+}
+
+fn discord_activity(
+    cache: &mut Cache,
+    client: &mut DiscordIpcClient,
+    app_name: &iTunesAppName,
+) -> Result<(), Box<dyn std::error::Error>> {
+    //client.reconnect()?;
+
+
+    let state = get_music_state(&app_name);
+
+    println!("state: {:?}", state);
+
+    if state == "playing" {
+        let props = get_music_props(&app_name);
+
+        let mut end = 0.0;
+        if let Some(duration) = props.duration {
+            let player_position = get_music_player_position(&app_name);
+
+            let delta = (duration - player_position) * 1000.0;
+
+            let since_the_epoch = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+
+            end = (since_the_epoch.as_millis() as f64 + delta).ceil();
+        }
+
+        let mut activity = Activity::new()
+            .details(&props.name)
+            .assets(Assets::new().large_image("appicon"));
+
+        if end > 0.0 {
+            activity = activity.timestamps(activity::Timestamps::new().end(end as i64));
+        }
+
+        if props.artist.len() > 0 {
+            activity = activity.state(&props.artist);
+        }
+
+        let p_artwork: String;
+        let p_url: String;
+
+        if props.album.len() > 0 {
+            let infos = search_album_artwork(cache, &props)?;
+
+            if let Some(infos) = infos {
+                p_artwork = infos.artwork.unwrap_or_else(|| "appicon".to_string());
+                activity = activity.assets(
+                    Assets::new()
+                        .large_image(&p_artwork)
+                        .large_text(&props.artist),
+                );
+
+                if let Some(url) = infos.url {
+                    p_url = url;
+                    activity =
+                        activity.buttons(vec![Button::new("Poslouchej na Apple Music ", &p_url)]);
+                }
+            }
+        }
+
+        client.set_activity(activity)?;
+    } else {
+        client.clear_activity()?;
+    }
+    Ok(())
 }
 fn main() {
     const MAC_OS_CATALINA: f32 = 10.15;
@@ -104,72 +166,14 @@ fn main() {
         let is_open = is_music_open(&app_name);
 
         if is_open {
-            let state = get_music_state(&app_name);
-
-            println!("state: {:?}", state);
-
-            if state == "playing" {
-                let props = get_music_props(&app_name);
-
-                let mut end = 0.0;
-                if let Some(duration) = props.duration {
-                    let player_position = get_music_player_position(&app_name);
-
-                    let delta = (duration - player_position) * 1000.0;
-
-                    let since_the_epoch = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Time went backwards");
-
-                    end = (since_the_epoch.as_millis() as f64 + delta).ceil();
-                }
-
-                let mut activity = Activity::new()
-                    .details(&props.name)
-                    .assets(Assets::new().large_image("appicon"));
-
-                if end > 0.0 {
-                    activity = activity.timestamps(activity::Timestamps::new().end(end as i64));
-                }
-
-                if props.artist.len() > 0 {
-                    activity = activity.state(&props.artist);
-                }
-
-                let p_artwork: String;
-                let p_url: String;
-
-                if props.album.len() > 0 {
-                    let infos = search_album_artwork(&mut cache, &props);
-
-                    if let Some(infos) = infos {
-                        p_artwork = infos.artwork.unwrap_or_else(|| "appicon".to_string());
-                        activity = activity.assets(
-                            Assets::new()
-                                .large_image(&p_artwork)
-                                .large_text(&props.artist),
-                        );
-
-                        if let Some(url) = infos.url {
-                            p_url = url;
-                            activity =
-                                activity.buttons(vec![Button::new("Poslouchej na Apple Music ", &p_url)]);
-                        }
-                    }
-                }
-
-                let set_activity = client.set_activity(activity);
-                if let Err(err) = set_activity {
-                    eprintln!("Error: {}", err);
-                }
-            } else if state == "paused" || state == "stopped" {
-                let clear_activity = client.clear_activity();
-                if let Err(err) = clear_activity {
-                    eprintln!("Error: {}", err);
-                }
+            if let Err(e) = discord_activity(&mut cache, &mut client, &app_name) {
+                println!("Error: {}", e);
+            }
+        } else {
+            if let Err(err) = client.close() {
+                eprintln!("Error: {}", err);
             }
         }
-
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
 }
