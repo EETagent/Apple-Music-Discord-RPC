@@ -17,6 +17,7 @@ serde = {version = "^1.0", features = ["derive"]}
 osascript = "0.3.0"
 
 [profile.release]
+strip = "symbols"
 opt-level = "z"
 lto = true
 codegen-units = 1
