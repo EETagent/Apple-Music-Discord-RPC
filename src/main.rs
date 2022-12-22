@@ -17,21 +17,18 @@ use helpers::{
 fn search_album_artwork(
     cache: &mut Cache,
     props: &iTunesProps,
+    album: bool,
 ) -> Result<Option<iTunesInfos>, Box<dyn std::error::Error>> {
     let query = format!("{} {}", props.artist, props.name);
 
     let infos = cache.get(query.clone());
 
     if let None = infos {
-        let url = Url::parse_with_params(
-            "https://itunes.apple.com/search?",
-            &[
-                ("media", "music"),
-                ("entity", "album"),
-                ("limit", "1"),
-                ("term", &query),
-            ],
-        )?;
+        let mut params = vec![("media", "music"), ("limit", "1"), ("term", &query)];
+        if album {
+            params.push(("entity", "album"));
+        }
+        let url = Url::parse_with_params("https://itunes.apple.com/search?", &params)?;
 
         #[derive(Deserialize)]
         struct ResponseInner {
@@ -51,7 +48,10 @@ fn search_album_artwork(
         let resp: ResponseOuter = serde_json::from_str(resp.as_str()?)?;
 
         if resp.results.len() == 0 {
-            return Ok(None);
+            if !album {
+                return Ok(None);
+            }
+            return search_album_artwork(cache, props, false);
         }
 
         let infos = iTunesInfos {
@@ -75,7 +75,6 @@ fn discord_activity(
     app_name: &iTunesAppName,
 ) -> Result<(), Box<dyn std::error::Error>> {
     //client.reconnect()?;
-
 
     let state = get_music_state(&app_name);
 
@@ -113,7 +112,7 @@ fn discord_activity(
         let p_url: String;
 
         if props.album.len() > 0 {
-            let infos = search_album_artwork(cache, &props)?;
+            let infos = search_album_artwork(cache, &props, true)?;
 
             if let Some(infos) = infos {
                 p_artwork = infos.artwork.unwrap_or_else(|| "appicon".to_string());
